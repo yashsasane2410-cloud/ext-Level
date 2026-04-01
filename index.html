@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Next Level | Gaming</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <style>
+        :root { --bg: #080a0f; --card: #11141d; --blue: #0084ff; --yellow: #ffab00; --border: #1e2433; --text: #e0e6ed; --muted: #8b949e; --green: #00c853; --red: #ff3d00; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg); color: var(--text); padding-bottom: 80px; }
+        .hidden { display: none !important; }
+        header { background: var(--card); padding: 15px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 15px; margin-bottom: 15px; }
+        .btn-full { width: 100%; padding: 14px; background: var(--blue); color: white; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; }
+        nav { position: fixed; bottom: 0; width: 100%; background: var(--card); display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid var(--border); }
+        .nav-item { color: var(--muted); text-align: center; font-size: 10px; flex: 1; }
+        .nav-item.active { color: var(--blue); }
+        .nav-item i { font-size: 20px; display: block; margin-bottom: 4px; }
+        input { width: 100%; padding: 14px; margin: 8px 0; background: #000; border: 1px solid var(--border); color: white; border-radius: 10px; }
+        #win-popup { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--card); border: 2px solid var(--yellow); padding: 30px; text-align: center; z-index: 10001; border-radius: 20px; width: 85%; }
+    </style>
+</head>
+<body>
+
+    <div id="win-popup" class="hidden">
+        <h1 style="font-size: 50px;">🏆</h1>
+        <h2 style="color: var(--yellow);">CONGRATULATIONS!</h2>
+        <p>You earned from last match</p>
+        <h1 id="win-amt" style="font-size: 40px; color: var(--green);">₹0</h1>
+        <button class="btn-full" style="margin-top: 20px; background: var(--yellow); color: #000;" onclick="closeWin()">COLLECT CASH</button>
+    </div>
+
+    <div id="auth-screen" style="height:100vh; display:flex; flex-direction:column; justify-content:center; padding:35px;">
+        <h1 style="text-align:center; color:var(--blue); font-weight:900;">NEXT LEVEL</h1>
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="password" placeholder="Password">
+        <button class="btn-full" onclick="handleAuth()">LOGIN / JOIN</button>
+    </div>
+
+    <div id="main-app" class="hidden">
+        <header>
+            <span id="user-display" style="font-weight:bold;">GAMER</span>
+            <div style="background:rgba(0,132,255,0.1); padding:5px 12px; border-radius:20px; border:1px solid var(--blue);">
+                <span style="color:var(--blue); font-weight:bold;">₹<span id="bal-header">0</span></span>
+            </div>
+        </header>
+
+        <main style="padding: 15px;">
+            <section id="sec-home">
+                <div id="banner-home" style="width:100%; height:160px; border-radius:15px; overflow:hidden; background:var(--card); margin-bottom:20px;"></div>
+                <div id="tournaments-list"></div>
+                <h3 style="font-size:12px; color:var(--blue); margin-top:20px;">MY JOINED MATCHES</h3>
+                <div id="my-joined-list"></div>
+            </section>
+
+            <section id="sec-rank" class="hidden">
+                <div class="card"><h2 style="text-align:center; color:var(--yellow);">GLOBAL RANKING</h2><div id="leaderboard-list"></div></div>
+            </section>
+
+            <section id="sec-wallet" class="hidden">
+                <div class="card" style="text-align:center; padding:30px;">
+                    <p style="color:var(--muted);">Wallet Balance</p>
+                    <h1 style="font-size:50px;">₹<span id="bal-main">0</span></h1>
+                    <div style="display:flex; gap:10px; margin-top:20px;">
+                        <button class="btn-full" style="background:var(--green);" onclick="openDep()">+ DEPOSIT</button>
+                        <button class="btn-full" style="background:var(--red);" onclick="withdrawMoney()">- WITHDRAW</button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="sec-profile" class="hidden">
+                <div class="card" style="text-align:center;">
+                    <h3 id="prof-email">Email</h3>
+                    <button class="btn-full" style="background:var(--border); color:var(--red); margin-top:20px;" onclick="firebase.auth().signOut()">LOGOUT</button>
+                </div>
+            </section>
+        </main>
+
+        <nav>
+            <div class="nav-item active" onclick="showSection('home')" id="nav-home"><i class="fa-solid fa-house"></i><span>Home</span></div>
+            <div class="nav-item" onclick="showSection('rank')" id="nav-rank"><i class="fa-solid fa-trophy"></i><span>Rank</span></div>
+            <div class="nav-item" onclick="showSection('wallet')" id="nav-wallet"><i class="fa-solid fa-wallet"></i><span>Wallet</span></div>
+            <div class="nav-item" onclick="showSection('profile')" id="nav-profile"><i class="fa-solid fa-user"></i><span>Profile</span></div>
+        </nav>
+    </div>
+
+    <div id="modal-pay" class="hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.98); z-index:2000; display:flex; align-items:center; justify-content:center; padding:25px;">
+        <div class="card" style="width:100%; max-width:400px;">
+            <h3 style="text-align:center;">DEPOSIT MONEY</h3>
+            <img id="admin-qr" style="width:200px; height:200px; display:block; margin:15px auto; border-radius:10px;">
+            <p id="admin-upi" style="text-align:center; font-weight:bold; color:var(--yellow);"></p>
+            <input type="number" id="dep-amt" placeholder="Amount (₹)">
+            <input type="text" id="dep-upi" placeholder="UTR / Transaction ID">
+            <button class="btn-full" style="background:var(--green);" onclick="submitDep()">SUBMIT</button>
+            <button class="btn-full" style="background:transparent; color:var(--muted);" onclick="closeDep()">CLOSE</button>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBu9uGeLdcpG_GfpDF4hpLkIz2u5ShRePc",
+            authDomain: "next-level-a2e4c.firebaseapp.com",
+            projectId: "next-level-a2e4c",
+            storageBucket: "next-level-a2e4c.firebasestorage.app",
+            messagingSenderId: "688254029778",
+            appId: "1:688254029778:web:41d974bfc3cc8fda20020b"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth(), db = firebase.firestore();
+
+        async function handleAuth() {
+            const e = document.getElementById('email').value, p = document.getElementById('password').value;
+            try { await auth.signInWithEmailAndPassword(e, p); }
+            catch (err) {
+                const res = await auth.createUserWithEmailAndPassword(e, p);
+                await db.collection('users').doc(res.user.uid).set({ email: e, balance: 0, totalEarnings: 0, lastWin: 0 });
+            }
+        }
+
+        auth.onAuthStateChanged(user => {
+            if(user) {
+                document.getElementById('auth-screen').classList.add('hidden');
+                document.getElementById('main-app').classList.remove('hidden');
+                document.getElementById('prof-email').innerText = user.email;
+                loadAppData(user.uid);
+            } else {
+                document.getElementById('auth-screen').classList.remove('hidden');
+                document.getElementById('main-app').classList.add('hidden');
+            }
+        });
+
+        function loadAppData(uid) {
+            db.collection('users').doc(uid).onSnapshot(doc => {
+                if(doc.exists) { 
+                    const d = doc.data();
+                    document.getElementById('bal-header').innerText = d.balance; 
+                    document.getElementById('bal-main').innerText = d.balance; 
+                    if(d.lastWin > 0) {
+                        document.getElementById('win-amt').innerText = "₹" + d.lastWin;
+                        document.getElementById('win-popup').classList.remove('hidden');
+                    }
+                }
+            });
+
+            db.collection('tournaments').onSnapshot(snap => {
+                const l = document.getElementById('tournaments-list'); l.innerHTML = "";
+                snap.forEach(doc => {
+                    const t = doc.data();
+                    l.innerHTML += `<div class="card" style="display:flex; gap:12px; align-items:center;">
+                        <img src="${t.img}" style="width:65px; height:65px; border-radius:10px; object-fit:cover;">
+                        <div style="flex-grow:1;">
+                            <div style="font-weight:bold; font-size:14px;">${t.title}</div>
+                            <div style="font-size:10px; color:var(--muted);">Entry: ₹${t.entry} | Prize: ₹${t.prizePool} | Per Kill: ₹${t.perKill||0}</div>
+                        </div>
+                        <button onclick="joinMatch('${doc.id}', ${t.entry})" style="background:var(--blue); border:none; padding:10px; border-radius:10px; color:#fff;"><i class="fa-solid fa-arrow-right"></i></button>
+                    </div>`;
+                });
+            });
+
+            db.collection('entries').where('uid', '==', uid).onSnapshot(snap => {
+                const list = document.getElementById('my-joined-list'); list.innerHTML = "";
+                snap.forEach(async ed => {
+                    const t = await db.collection('tournaments').doc(ed.data().tId).get();
+                    if(t.exists) list.innerHTML += `<div class="card" style="border-left:4px solid var(--green)"><b>${t.data().title}</b><br><small>ID: ${t.data().roomId || 'Wait'} | PASS: ${t.data().roomPass || 'Wait'}</small></div>`;
+                });
+            });
+
+            db.collection('users').orderBy('totalEarnings', 'desc').limit(10).onSnapshot(s => {
+                const l = document.getElementById('leaderboard-list'); l.innerHTML = "";
+                s.forEach((doc, i) => l.innerHTML += `<div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid var(--border);"><span>#${i+1} ${doc.data().email.split('@')[0]}</span><b>₹${doc.data().totalEarnings}</b></div>`);
+            });
+
+            db.collection('app_settings').doc('admin_data').onSnapshot(doc => { if(doc.exists) { document.getElementById('admin-qr').src = doc.data().qr_url; document.getElementById('admin-upi').innerText = doc.data().upi_id; } });
+            db.collection('banners').doc('main').onSnapshot(doc => { if(doc.exists) document.getElementById('banner-home').innerHTML = `<img src="${doc.data().url}" style="width:100%; height:100%; object-fit:cover;">`; });
+        }
+
+        async function joinMatch(tid, fee) {
+            const gid = prompt("Enter Game ID:"); if(!gid) return;
+            const uRef = db.collection('users').doc(auth.currentUser.uid);
+            await db.runTransaction(async t => {
+                const u = await t.get(uRef);
+                if(u.data().balance < fee) throw alert("Low Balance!");
+                t.update(uRef, { balance: u.data().balance - fee });
+                t.set(db.collection('entries').doc(auth.currentUser.uid + "_" + tid), { uid: auth.currentUser.uid, email: auth.currentUser.email, tId: tid, gameId: gid });
+            });
+            alert("Joined!");
+        }
+
+        async function closeWin() { await db.collection('users').doc(auth.currentUser.uid).update({ lastWin: 0 }); document.getElementById('win-popup').classList.add('hidden'); }
+        function openDep() { document.getElementById('modal-pay').classList.remove('hidden'); }
+        function closeDep() { document.getElementById('modal-pay').classList.add('hidden'); }
+        async function submitDep() {
+            await db.collection('deposits').add({ uid: auth.currentUser.uid, email: auth.currentUser.email, amount: Number(document.getElementById('dep-amt').value), user_upi: document.getElementById('dep-upi').value, status: 'PENDING' });
+            alert("Sent!"); closeDep();
+        }
+        async function withdrawMoney() {
+            const amt = Number(prompt("Amount (Min 50):")); if(amt < 50) return;
+            const uRef = db.collection('users').doc(auth.currentUser.uid);
+            const u = await uRef.get(); if(u.data().balance < amt) return alert("Low Balance");
+            await uRef.update({ balance: u.data().balance - amt });
+            await db.collection('withdrawals').add({ uid: auth.currentUser.uid, email: auth.currentUser.email, amount: amt, status: 'PENDING' });
+            alert("Withdrawal Requested!");
+        }
+        function showSection(id) { document.querySelectorAll('section').forEach(s => s.classList.add('hidden')); document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active')); document.getElementById('sec-' + id).classList.remove('hidden'); document.getElementById('nav-' + id).classList.add('active'); }
+    </script>
+</body>
+</html>
